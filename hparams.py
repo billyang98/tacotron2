@@ -26,8 +26,8 @@ def create_hparams(hparams_string=None, verbose=False):
         # Data Parameters             #
         ################################
         load_mel_from_disk=False,
-        training_files='filelists/david/setup_filelist_traindata.txt',
-        validation_files='filelists/david/setup_filelist_traindata.txt',
+        training_files='filelists/david/setup_filelist_traindata_stripped.txt',
+        validation_files='filelists/david/setup_filelist_traindata_stripped.txt',
         text_cleaners=['english_cleaners'],
 
         ################################
