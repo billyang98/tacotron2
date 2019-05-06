@@ -240,6 +240,8 @@ class Decoder(nn.Module):
             hparams.decoder_rnn_dim + hparams.encoder_embedding_dim, 1,
             bias=True, w_init_gain='sigmoid')
 
+        self.unsupervised = hparams.unsupervised
+
     def get_go_frame(self, memory):
         """ Gets all zeros frames to use as first decoder input
         PARAMS
@@ -469,6 +471,8 @@ class Tacotron2(nn.Module):
         self.encoder = Encoder(hparams)
         self.decoder = Decoder(hparams)
         self.postnet = Postnet(hparams)
+        # param for if unsupervised pre training of decoder
+        self.unsupervised = hparams.unsupervised
 
     def parse_batch(self, batch):
         text_padded, input_lengths, mel_padded, gate_padded, \
