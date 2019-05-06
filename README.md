@@ -43,6 +43,9 @@ By default, the dataset dependent text embedding layers are [ignored]
 ## Multi-GPU (distributed) and Automatic Mixed Precision Training
 1. `python -m multiproc train.py --output_directory=outdir --log_directory=logdir --hparams=distributed_run=True,fp16_run=True`
 
+## Multi-GPU Unsupervised learning
+1. `python -m multiproc train.py --output_directory=outdir --log_directory=logdir --hparams=distributed_run=True,fp16_run=True,unsupervised=True`
+
 ## Inference demo
 1. Download our published [Tacotron 2] model
 2. Download our published [WaveGlow] model

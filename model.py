@@ -269,6 +269,7 @@ class Decoder(nn.Module):
         B = memory.size(0)
         MAX_TIME = memory.size(1)
 
+        # all zeroed out, set up for shape
         self.attention_hidden = Variable(memory.data.new(
             B, self.attention_rnn_dim).zero_())
         self.attention_cell = Variable(memory.data.new(
@@ -289,6 +290,12 @@ class Decoder(nn.Module):
         self.memory = memory
         self.processed_memory = self.attention_layer.memory_layer(memory)
         self.mask = mask
+#        print("#######\nmemory stuff")
+#        print(self.memory.size())
+#        print(self.memory)
+#        print(self.processed_memory.size())
+#        print(self.processed_memory)
+
 
     def parse_decoder_inputs(self, decoder_inputs):
         """ Prepares decoder inputs, i.e. mel outputs
@@ -351,9 +358,14 @@ class Decoder(nn.Module):
         gate_output: gate output energies
         attention_weights:
         """
+#        print('##################\nstart decode')
+#        print("decoder input: {}".format(decoder_input))
         cell_input = torch.cat((decoder_input, self.attention_context), -1)
+#        print("cell input: {}".format(cell_input))
         self.attention_hidden, self.attention_cell = self.attention_rnn(
             cell_input, (self.attention_hidden, self.attention_cell))
+#        print("attention hidden: {}".format(self.attention_hidden))
+#        print("attention cell: {}".format(self.attention_cell))
         self.attention_hidden = F.dropout(
             self.attention_hidden, self.p_attention_dropout, self.training)
 
@@ -363,10 +375,12 @@ class Decoder(nn.Module):
         self.attention_context, self.attention_weights = self.attention_layer(
             self.attention_hidden, self.memory, self.processed_memory,
             attention_weights_cat, self.mask)
+#        print("attention context: {}".format(self.attention_context))
 
         self.attention_weights_cum += self.attention_weights
         decoder_input = torch.cat(
             (self.attention_hidden, self.attention_context), -1)
+#        print("decoder input: {}".format(decoder_input))
         self.decoder_hidden, self.decoder_cell = self.decoder_rnn(
             decoder_input, (self.decoder_hidden, self.decoder_cell))
         self.decoder_hidden = F.dropout(
@@ -374,6 +388,7 @@ class Decoder(nn.Module):
 
         decoder_hidden_attention_context = torch.cat(
             (self.decoder_hidden, self.attention_context), dim=1)
+#        print("decoder hidden attention context: {}".format(decoder_hidden_attention_context))
         decoder_output = self.linear_projection(
             decoder_hidden_attention_context)
 
@@ -473,6 +488,7 @@ class Tacotron2(nn.Module):
         self.postnet = Postnet(hparams)
         # param for if unsupervised pre training of decoder
         self.unsupervised = hparams.unsupervised
+        self.encoder_embedding_dim = hparams.encoder_embedding_dim
 
     def parse_batch(self, batch):
         text_padded, input_lengths, mel_padded, gate_padded, \
@@ -504,9 +520,19 @@ class Tacotron2(nn.Module):
         text_inputs, text_lengths, mels, max_len, output_lengths = inputs
         text_lengths, output_lengths = text_lengths.data, output_lengths.data
 
-        embedded_inputs = self.embedding(text_inputs).transpose(1, 2)
+        if not self.unsupervised:
+            embedded_inputs = self.embedding(text_inputs).transpose(1, 2)
 
-        encoder_outputs = self.encoder(embedded_inputs, text_lengths)
+            encoder_outputs = self.encoder(embedded_inputs, text_lengths)
+        else:
+            # make a fake 0 tensor for decoding
+            # [batch size, fake input length, embedding size]
+            B = mels.size(0)
+            fake_input_length = 128
+            encoder_outputs = Variable(torch.zeros(
+                B, fake_input_length, self.encoder_embedding_dim,
+                dtype=torch.half).cuda()) 
+            text_lengths = torch.tensor([fake_input_length] * B).cuda()
 
         mel_outputs, gate_outputs, alignments = self.decoder(
             encoder_outputs, mels, memory_lengths=text_lengths)
