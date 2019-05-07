@@ -1,0 +1,10 @@
+david_full_audio_dir/audio_3/sound-01.wav|
+david_full_audio_dir/audio_3/sound-02.wav|
+david_full_audio_dir/audio_3/sound-03.wav|
+david_full_audio_dir/audio_3/sound-05.wav|
+david_full_audio_dir/audio_3/sound-06.wav|
+david_full_audio_dir/audio_3/sound-07.wav|
+david_full_audio_dir/audio_3/sound-08.wav|
+david_full_audio_dir/audio_3/sound-09.wav|
+david_full_audio_dir/audio_3/sound-10.wav|
+david_full_audio_dir/audio_3/sound-11.wav|
