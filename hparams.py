@@ -9,10 +9,10 @@ def create_hparams(hparams_string=None, verbose=False):
         ################################
         # Experiment Parameters        #
         ################################
-        epochs=500, #original
-#        epochs=2,
+#        epochs=500, #original
+        epochs=100,
 #        iters_per_checkpoint=1000, # original
-        iters_per_checkpoint=3000,
+        iters_per_checkpoint=1000,
         seed=1234,
         dynamic_loss_scaling=True,
         fp16_run=False,
