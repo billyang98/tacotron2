@@ -9,9 +9,10 @@ def create_hparams(hparams_string=None, verbose=False):
         ################################
         # Experiment Parameters        #
         ################################
-#        epochs=500, #original
-        epochs=2,
-        iters_per_checkpoint=20,
+        epochs=500, #original
+#        epochs=2,
+#        iters_per_checkpoint=1000, # original
+        iters_per_checkpoint=3000,
         seed=1234,
         dynamic_loss_scaling=True,
         fp16_run=False,
@@ -26,6 +27,7 @@ def create_hparams(hparams_string=None, verbose=False):
         # Data Parameters             #
         ################################
         load_mel_from_disk=False,
+        # these files are for development
         training_files='filelists/david/setup_filelist_traindata_stripped.txt',
         validation_files='filelists/david/setup_filelist_traindata_stripped.txt',
         text_cleaners=['english_cleaners'],
@@ -82,8 +84,8 @@ def create_hparams(hparams_string=None, verbose=False):
         learning_rate=1e-3,
         weight_decay=1e-6,
         grad_clip_thresh=1.0,
-#       batch_size=64,
-        batch_size = 4,
+        batch_size=64, # original
+#        batch_size = 4,
         mask_padding=True,  # set model's padded outputs to padded values
 
         # Unsupervised learning params for unlabelled data
