@@ -44,7 +44,7 @@ By default, the dataset dependent text embedding layers are [ignored]
 1. `python -m multiproc train.py --output_directory=outdir --log_directory=logdir --hparams=distributed_run=True,fp16_run=True`
 
 ## Multi-GPU Unsupervised learning
-1. `python -m multiproc train.py --output_directory=outdir --log_directory=logdir --hparams=distributed_run=True,fp16_run=True,unsupervised=True`
+1. `python -m multiproc train.py --output_directory=outdir --log_directory=logdir --hparams=distributed_run=True,fp16_run=True,unsupervised=True,training_files=filelists/david/unlabelled/train_list.txt,validation_files=filelists/david/unlabelled/val_list.txt `
 
 ## Inference demo
 1. Download our published [Tacotron 2] model
