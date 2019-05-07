@@ -143,7 +143,7 @@ def validate(model, criterion, valset, iteration, batch_size, n_gpus,
     model.train()
     if rank == 0:
         print("Validation loss {}: {:9f}  ".format(iteration, reduced_val_loss))
-#       logger.log_validation(reduced_val_loss, model, y, y_pred, iteration)
+        logger.log_validation(reduced_val_loss, model, y, y_pred, iteration)
 
 
 def train(output_directory, log_directory, checkpoint_path, warm_start, n_gpus,
@@ -253,6 +253,15 @@ def train(output_directory, log_directory, checkpoint_path, warm_start, n_gpus,
                                     checkpoint_path)
 
             iteration += 1
+    # validate and save checkpoint at the very end
+    validate(model, criterion, valset, iteration,
+             hparams.batch_size, n_gpus, collate_fn, logger,
+             hparams.distributed_run, rank)
+    if rank == 0:
+        checkpoint_path = os.path.join(
+            output_directory, "checkpoint_{}".format(iteration))
+        save_checkpoint(model, optimizer, learning_rate, iteration,
+                        checkpoint_path)
 
 
 if __name__ == '__main__':
