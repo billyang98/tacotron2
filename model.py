@@ -83,6 +83,8 @@ class Attention(nn.Module):
         attention_context = torch.bmm(attention_weights.unsqueeze(1), memory)
         attention_context = attention_context.squeeze(1)
 
+#        print("attention_weights")
+#        print(attention_weights)
         return attention_context, attention_weights
 
 
@@ -291,6 +293,7 @@ class Decoder(nn.Module):
         self.processed_memory = self.attention_layer.memory_layer(memory)
         self.mask = mask
 #        print("#######\nmemory stuff")
+#        print(self.mask)
 #        print(self.memory.size())
 #        print(self.memory)
 #        print(self.processed_memory.size())
@@ -415,8 +418,15 @@ class Decoder(nn.Module):
         decoder_inputs = torch.cat((decoder_input, decoder_inputs), dim=0)
         decoder_inputs = self.prenet(decoder_inputs)
 
+        mask = get_mask_from_lengths(memory_lengths)
+        if not self.unsupervised:
+            # this is the desired functionality,
+            # we do a hack for unsupervised because we want the mask to be
+            # flipped so we do not pay any attention to the attention (haha), ie
+            # we want all the attention weights to be 0
+            mask = ~mask
         self.initialize_decoder_states(
-            memory, mask=~get_mask_from_lengths(memory_lengths))
+            memory, mask=mask)
 
         mel_outputs, gate_outputs, alignments = [], [], []
         while len(mel_outputs) < decoder_inputs.size(0) - 1:
