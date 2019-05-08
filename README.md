@@ -46,6 +46,11 @@ By default, the dataset dependent text embedding layers are [ignored]
 ## Multi-GPU Unsupervised learning
 1. `python -m multiproc train.py --output_directory=outdir_unsupervised --log_directory=logdir --hparams=distributed_run=True,fp16_run=True,unsupervised=True,training_files=filelists/david/unlabelled/train_list.txt,validation_files=filelists/david/unlabelled/val_list.txt `
 
+## Multi-GPU Unsupervised validation
+python -m multiproc validate.py --output_directory=outdir_val
+--log_directory=logdir -c outdir_unsupervised/checkpoint_10200
+--hparams=distributed_run=True,fp16_run=True,unsupervised=True,training_files=filelists/david/unlabelled/train_list.txt,validation_files=filelists/david/unlabelled/val_list.txt
+
 ## Inference demo
 1. Download our published [Tacotron 2] model
 2. Download our published [WaveGlow] model
