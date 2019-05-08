@@ -2028,7 +2028,6 @@ david_full_audio_dir/audio_6/sound-381.wav|
 david_full_audio_dir/audio_6/sound-382.wav|
 david_full_audio_dir/audio_6/sound-383.wav|
 david_full_audio_dir/audio_6/sound-384.wav|
-david_full_audio_dir/audio_6/sound-385.wav|
 david_full_audio_dir/audio_6/sound-386.wav|
 david_full_audio_dir/audio_6/sound-387.wav|
 david_full_audio_dir/audio_6/sound-388.wav|
