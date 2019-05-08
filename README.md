@@ -43,6 +43,9 @@ By default, the dataset dependent text embedding layers are [ignored]
 ## Multi-GPU (distributed) and Automatic Mixed Precision Training
 1. `python -m multiproc train.py --output_directory=outdir --log_directory=logdir --hparams=distributed_run=True,fp16_run=True`
 
+## Multi-GPU (distributed) Supervised learning
+1. `python -m multiproc train.py --output_directory=outdir_fulltacotron --log_directory=logdir --hparams=distributed_run=True,fp16_run=True,training_files=filelists/david/labelled/train.txt,validation_files=filelists/david/labelled/val.txt`
+
 ## Multi-GPU Unsupervised learning
 1. `python -m multiproc train.py --output_directory=outdir_unsupervised --log_directory=logdir --hparams=distributed_run=True,fp16_run=True,unsupervised=True,training_files=filelists/david/unlabelled/train_list.txt,validation_files=filelists/david/unlabelled/val_list.txt `
 
