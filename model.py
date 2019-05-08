@@ -2,6 +2,7 @@ from math import sqrt
 import torch
 from torch.autograd import Variable
 from torch import nn
+import torchnlp
 from torch.nn import functional as F
 from layers import ConvNorm, LinearNorm
 from utils import to_gpu, get_mask_from_lengths
@@ -86,6 +87,29 @@ class Attention(nn.Module):
 #        print("attention_weights")
 #        print(attention_weights)
         return attention_context, attention_weights
+
+class AdditiveAttention(nn.Module):
+    """
+    class for attention for conditioning inputs based on word and character
+    vectors
+    """
+    def __init__(self, embedding_dim):
+        super(AdditiveAttention, self).__init__()
+        self.query_layer = LinearNorm(embedding_dim, embedding_dim, bias=False,
+                                    w_init_gain='tanh')
+        self.out_layer = LinearNorm(embedding_dim, embedding_dim, bias=False,
+                                    w_init_gain='tanh')
+    
+    def forward(self, query, context):
+        """
+        PARAMS
+        ------
+        query: char vectors [batch size, num chars, embedding_dim]
+        context: word vectors [batch size, num words, embedding_dim]
+        """
+        return
+
+
 
 
 class Prenet(nn.Module):
