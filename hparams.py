@@ -93,12 +93,35 @@ def create_hparams(hparams_string=None, verbose=False):
 
         # encoder conditioning from Semi supervised learning
         encoder_conditioning = False,
-        word_embedding_dim = 300
+        word_embedding_dim = 300,
+        make_new_encoder = False
     )
 
     if hparams_string:
         tf.logging.info('Parsing command line hparams: %s', hparams_string)
         hparams.parse(hparams_string)
+
+    if hparams.make_new_encoder:
+        hparams.ignore_layers = ['encoder.convolutions.0.0.conv.weight',
+        'encoder.convolutions.0.0.conv.bias',
+        'encoder.convolutions.0.1.weight',
+        'encoder.convolutions.0.1.bias',
+        'encoder.convolutions.0.1.running_mean',
+        'encoder.convolutions.0.1.running_var',
+        'encoder.convolutions.1.0.conv.weight',
+        'encoder.convolutions.1.0.conv.bias',
+        'encoder.convolutions.1.1.weight',
+        'encoder.convolutions.1.1.bias',
+        'encoder.convolutions.1.1.running_mean',
+        'encoder.convolutions.1.1.running_var',
+        'encoder.convolutions.2.0.conv.weight',
+        'encoder.convolutions.2.0.conv.bias',
+        'encoder.convolutions.2.1.weight',
+        'encoder.convolutions.2.1.bias',
+        'encoder.convolutions.2.1.running_mean',
+        'encoder.convolutions.2.1.running_var',
+        'encoder.lstm.weight_ih_l0',
+        'encoder.lstm.weight_ih_l0_reverse']
 
     if verbose:
         tf.logging.info('Final parsed hparams: %s', hparams.values())

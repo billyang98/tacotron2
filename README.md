@@ -48,6 +48,7 @@ By default, the dataset dependent text embedding layers are [ignored]
 
 ## Multi-GPU (distributed) Supervised learning with encoder conditioning
 1.  `python -m multiproc train.py --output_directory=outdir --log_directory=logdir --hparams=distributed_run=True,fp16_run=True,training_files=filelists/david/labelled/val.txt,validation_files=filelists/david/labelled/val.txt,encoder_conditioning=True`
+2. `python -m multiproc train.py --output_directory=outdir_full_tacotron_ed --log_directory=logdir --hparams=distributed_run=True,fp16_run=True,training_files=filelists/david/labelled/train.txt,validation_files=filelists/david/labelled/val.txt,encoder_conditioning=True,make_new_encoder=True -c outdir_unsupervised/checkpoint_10000 --warm_start`
 
 ## Multi-GPU Unsupervised learning
 1. `python -m multiproc train.py --output_directory=outdir_unsupervised --log_directory=logdir --hparams=distributed_run=True,fp16_run=True,unsupervised=True,training_files=filelists/david/unlabelled/train_list.txt,validation_files=filelists/david/unlabelled/val_list.txt `
