@@ -2,7 +2,6 @@ from math import sqrt
 import torch
 from torch.autograd import Variable
 from torch import nn
-import torchnlp
 from torch.nn import functional as F
 from layers import ConvNorm, LinearNorm
 from utils import to_gpu, get_mask_from_lengths
@@ -55,10 +54,16 @@ class Attention(nn.Module):
         alignment (batch, max_time)
         """
 
+        #print("#### attention decoder")
+        #print("query {}".format(query.size()))
+        #print("processed_memory {}".format(processed_memory.size()))
         processed_query = self.query_layer(query.unsqueeze(1))
+        #print("processed_query {}".format(processed_query.size()))
         processed_attention_weights = self.location_layer(attention_weights_cat)
+        #print("processed_attention_weights {}".format(processed_attention_weights.size()))
         energies = self.v(torch.tanh(
             processed_query + processed_attention_weights + processed_memory))
+        #print("energies {}".format(energies.size()))
 
         energies = energies.squeeze(-1)
         return energies
@@ -84,8 +89,8 @@ class Attention(nn.Module):
         attention_context = torch.bmm(attention_weights.unsqueeze(1), memory)
         attention_context = attention_context.squeeze(1)
 
-#        print("attention_weights")
-#        print(attention_weights)
+        #print("attention_weights")
+        #print(attention_weights)
         return attention_context, attention_weights
 
 class AdditiveAttention(nn.Module):
@@ -93,23 +98,38 @@ class AdditiveAttention(nn.Module):
     class for attention for conditioning inputs based on word and character
     vectors
     """
-    def __init__(self, embedding_dim):
+    def __init__(self, hparams):
         super(AdditiveAttention, self).__init__()
-        self.query_layer = LinearNorm(embedding_dim, embedding_dim, bias=False,
+        # embedding dimension is for the character embedding
+        self.query_layer = LinearNorm(hparams.symbols_embedding_dim, hparams.encoder_embedding_dim, bias=False,
                                     w_init_gain='tanh')
-        self.out_layer = LinearNorm(embedding_dim, embedding_dim, bias=False,
+        self.context_layer = LinearNorm(hparams.word_embedding_dim, hparams.encoder_embedding_dim, bias=False,
+                                    w_init_gain='tanh')
+        self.energy_layer = LinearNorm(hparams.encoder_embedding_dim, 1, bias=False,
                                     w_init_gain='tanh')
     
-    def forward(self, query, context):
+    def forward(self, query, context, mask):
         """
         PARAMS
         ------
         query: char vectors [batch size, num chars, embedding_dim]
         context: word vectors [batch size, num words, embedding_dim]
         """
-        return
+        query_enc = self.query_layer(query).unsqueeze(1)
+        #print("characters query encoded {}".format(query_enc.size()))
+        context_enc = self.context_layer(context)
+        #print("word context encoded {}".format(context_enc.size()))
+        energies = self.energy_layer(torch.tanh(query_enc + context_enc)).squeeze(2)
+        #print("energies {}".format(energies.size()))
 
-
+        energies.data.masked_fill_(mask, -float('inf'))
+        energies = energies.unsqueeze(1)
+        attention_scores = F.softmax(energies, dim=-1)
+        #print("attention_scores {}".format(attention_scores.size()))
+        c = torch.bmm(attention_scores, context)
+        #print("context_vector {}".format(c.size()))
+        
+        return c, attention_scores
 
 
 class Prenet(nn.Module):
@@ -180,23 +200,28 @@ class Encoder(nn.Module):
     def __init__(self, hparams):
         super(Encoder, self).__init__()
 
+        if hparams.encoder_conditioning:
+            input_dim = hparams.encoder_embedding_dim + hparams.word_embedding_dim
+        else: 
+            input_dim = hparams.encoder_embedding_dim
         convolutions = []
         for _ in range(hparams.encoder_n_convolutions):
             conv_layer = nn.Sequential(
-                ConvNorm(hparams.encoder_embedding_dim,
-                         hparams.encoder_embedding_dim,
+                ConvNorm(input_dim,
+                         input_dim,
                          kernel_size=hparams.encoder_kernel_size, stride=1,
                          padding=int((hparams.encoder_kernel_size - 1) / 2),
                          dilation=1, w_init_gain='relu'),
-                nn.BatchNorm1d(hparams.encoder_embedding_dim))
+                nn.BatchNorm1d(input_dim))
             convolutions.append(conv_layer)
         self.convolutions = nn.ModuleList(convolutions)
 
-        self.lstm = nn.LSTM(hparams.encoder_embedding_dim,
+        self.lstm = nn.LSTM(input_dim,
                             int(hparams.encoder_embedding_dim / 2), 1,
                             batch_first=True, bidirectional=True)
 
     def forward(self, x, input_lengths):
+        #print("encoder begin x {}".format(x.size()))
         for conv in self.convolutions:
             x = F.dropout(F.relu(conv(x)), 0.5, self.training)
 
@@ -316,12 +341,12 @@ class Decoder(nn.Module):
         self.memory = memory
         self.processed_memory = self.attention_layer.memory_layer(memory)
         self.mask = mask
-#        print("#######\nmemory stuff")
-#        print(self.mask)
-#        print(self.memory.size())
-#        print(self.memory)
-#        print(self.processed_memory.size())
-#        print(self.processed_memory)
+        #print("#######\nmemory stuff")
+        #print(self.mask)
+        #print(self.memory.size())
+        #print(self.memory)
+        #print(self.processed_memory.size())
+        #print(self.processed_memory)
 
 
     def parse_decoder_inputs(self, decoder_inputs):
@@ -385,14 +410,14 @@ class Decoder(nn.Module):
         gate_output: gate output energies
         attention_weights:
         """
-#        print('##################\nstart decode')
-#        print("decoder input: {}".format(decoder_input))
+        #print('##################\nstart decode')
+        #print("decoder input: {}".format(decoder_input))
         cell_input = torch.cat((decoder_input, self.attention_context), -1)
-#        print("cell input: {}".format(cell_input))
+        #print("cell input: {}".format(cell_input))
         self.attention_hidden, self.attention_cell = self.attention_rnn(
             cell_input, (self.attention_hidden, self.attention_cell))
-#        print("attention hidden: {}".format(self.attention_hidden))
-#        print("attention cell: {}".format(self.attention_cell))
+        #print("attention hidden: {}".format(self.attention_hidden))
+        #print("attention cell: {}".format(self.attention_cell))
         self.attention_hidden = F.dropout(
             self.attention_hidden, self.p_attention_dropout, self.training)
 
@@ -402,12 +427,12 @@ class Decoder(nn.Module):
         self.attention_context, self.attention_weights = self.attention_layer(
             self.attention_hidden, self.memory, self.processed_memory,
             attention_weights_cat, self.mask)
-#        print("attention context: {}".format(self.attention_context))
+        #print("attention context: {}".format(self.attention_context))
 
         self.attention_weights_cum += self.attention_weights
         decoder_input = torch.cat(
             (self.attention_hidden, self.attention_context), -1)
-#        print("decoder input: {}".format(decoder_input))
+        #print("decoder input: {}".format(decoder_input))
         self.decoder_hidden, self.decoder_cell = self.decoder_rnn(
             decoder_input, (self.decoder_hidden, self.decoder_cell))
         self.decoder_hidden = F.dropout(
@@ -415,7 +440,7 @@ class Decoder(nn.Module):
 
         decoder_hidden_attention_context = torch.cat(
             (self.decoder_hidden, self.attention_context), dim=1)
-#        print("decoder hidden attention context: {}".format(decoder_hidden_attention_context))
+        #print("decoder hidden attention context: {}".format(decoder_hidden_attention_context))
         decoder_output = self.linear_projection(
             decoder_hidden_attention_context)
 
@@ -520,22 +545,30 @@ class Tacotron2(nn.Module):
         self.encoder = Encoder(hparams)
         self.decoder = Decoder(hparams)
         self.postnet = Postnet(hparams)
+        self.conditioner = AdditiveAttention(hparams)
         # param for if unsupervised pre training of decoder
         self.unsupervised = hparams.unsupervised
-        self.encoder_embedding_dim = hparams.encoder_embedding_dim
+        # encoder conditioning for semi supervised paper
+        self.encoder_conditioning = hparams.encoder_conditioning
 
     def parse_batch(self, batch):
         text_padded, input_lengths, mel_padded, gate_padded, \
-            output_lengths = batch
+            output_lengths, words, words_lengths = batch
         text_padded = to_gpu(text_padded).long()
         input_lengths = to_gpu(input_lengths).long()
         max_len = torch.max(input_lengths.data).item()
         mel_padded = to_gpu(mel_padded).float()
         gate_padded = to_gpu(gate_padded).float()
         output_lengths = to_gpu(output_lengths).long()
+        words_padded = None
+        if words is not None:
+            # for encoder conditioning
+            words_padded = to_gpu(words).float()
+            words_lengths = to_gpu(words_lengths).long()
 
         return (
-            (text_padded, input_lengths, mel_padded, max_len, output_lengths),
+            (text_padded, input_lengths, mel_padded, max_len, output_lengths,
+            words_padded, words_lengths),
             (mel_padded, gate_padded))
 
     def parse_output(self, outputs, output_lengths=None):
@@ -551,13 +584,33 @@ class Tacotron2(nn.Module):
         return outputs
 
     def forward(self, inputs):
-        text_inputs, text_lengths, mels, max_len, output_lengths = inputs
+        text_inputs, text_lengths, mels, max_len, output_lengths, words, words_lengths = inputs
         text_lengths, output_lengths = text_lengths.data, output_lengths.data
 
+        #print("\n####\nStarting Forward Pass")
+        #print("text_inputs {}".format(text_inputs.size()))
         if not self.unsupervised:
-            embedded_inputs = self.embedding(text_inputs).transpose(1, 2)
+            embedded_inputs = self.embedding(text_inputs)
+            #print("embedded_inputs {}".format(embedded_inputs.size()))
+            if self.encoder_conditioning:
+                # create attentioned inputs, a [embedded_input, context vector]
+                # vector
+                conditioner_mask = ~get_mask_from_lengths(words_lengths)
+                char_embeddings = embedded_inputs.transpose(0,1)
+                full_context_attention, alignments = [], []
+                for i in range(0, len(char_embeddings)):
+                    context_attention, alignment = self.conditioner(char_embeddings[i], words, conditioner_mask)
+                    full_context_attention.append(context_attention)
+                    alignments.append(alignment)
+                full_context_attention = torch.stack(full_context_attention).squeeze(2).transpose(0,1)
+                #print("full_context_attention {}".format(full_context_attention.size()))
+                embedded_inputs = torch.cat((embedded_inputs, full_context_attention), 2)
+                #print("embedded_inputs w/ attention context {}".format(embedded_inputs.size()))
+            embedded_inputs = embedded_inputs.transpose(1,2)
 
+            #print("encoder_inputs {} ".format(embedded_inputs.size()))
             encoder_outputs = self.encoder(embedded_inputs, text_lengths)
+            #print("encoder_outputs {} ".format(encoder_outputs.size()))
         else:
             # make a fake 0 tensor for decoding
             # [batch size, fake input length, embedding size]

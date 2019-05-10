@@ -6,6 +6,7 @@ import torch.utils.data
 import layers
 from utils import load_wav_to_torch, load_filepaths_and_text
 from text import text_to_sequence
+from glove import get_word
 
 
 class TextMelLoader(torch.utils.data.Dataset):
@@ -14,7 +15,7 @@ class TextMelLoader(torch.utils.data.Dataset):
         2) normalizes text and converts them to sequences of one-hot vectors
         3) computes mel-spectrograms from audio files.
     """
-    def __init__(self, audiopaths_and_text, hparams):
+    def __init__(self, audiopaths_and_text, hparams, glove=None):
         self.audiopaths_and_text = load_filepaths_and_text(audiopaths_and_text)
         self.text_cleaners = hparams.text_cleaners
         self.max_wav_value = hparams.max_wav_value
@@ -26,13 +27,15 @@ class TextMelLoader(torch.utils.data.Dataset):
             hparams.mel_fmax)
         random.seed(1234)
         random.shuffle(self.audiopaths_and_text)
+        self.glove = glove
 
     def get_mel_text_pair(self, audiopath_and_text):
         # separate filename and text
         audiopath, text = audiopath_and_text[0], audiopath_and_text[1]
+        words = self.get_words(text)
         text = self.get_text(text)
         mel = self.get_mel(audiopath)
-        return (text, mel)
+        return (text, mel, words)
 
     def get_mel(self, filename):
         if not self.load_mel_from_disk:
@@ -56,6 +59,15 @@ class TextMelLoader(torch.utils.data.Dataset):
     def get_text(self, text):
         text_norm = torch.IntTensor(text_to_sequence(text, self.text_cleaners))
         return text_norm
+
+    def get_words(self, text):
+        if self.glove is None:
+            return None
+        words = text.strip().split()
+        words_v = [get_word(self.glove, word) for word in words]
+        words_v = torch.FloatTensor(words_v)
+        return words_v
+        
 
     def __getitem__(self, index):
         return self.get_mel_text_pair(self.audiopaths_and_text[index])
@@ -87,6 +99,25 @@ class TextMelCollate():
         for i in range(len(ids_sorted_decreasing)):
             text = batch[ids_sorted_decreasing[i]][0]
             text_padded[i, :text.size(0)] = text
+        
+        # Right zero-pad all word tensors to max input length
+        words_padded = None
+        word_lengths = None
+        inputs = batch[0]
+        if batch[0][2] is not None:
+            # there are word tensors needed to be processed
+            # this is for encoder conditioning
+            word_vec_size = len(batch[0][2][0])
+            word_lengths, words_sorted_decreasing = torch.sort(
+                torch.LongTensor([len(x[2]) for x in batch]),
+                dim=0, descending=True)
+            max_word_len = word_lengths[0]
+
+            words_padded = torch.FloatTensor(len(batch), max_word_len, word_vec_size)
+            words_padded.zero_()
+            for i in range(len(words_sorted_decreasing)):
+                words = batch[ids_sorted_decreasing[i]][2]
+                words_padded[i, :words.size(0)] = words
 
         # Right zero-pad mel-spec
         num_mels = batch[0][1].size(0)
@@ -108,4 +139,4 @@ class TextMelCollate():
             output_lengths[i] = mel.size(1)
 
         return text_padded, input_lengths, mel_padded, gate_padded, \
-            output_lengths
+            output_lengths, words_padded, word_lengths

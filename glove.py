@@ -8,7 +8,7 @@ def create_glove_dict(glove_file="glove.6B.300d.txt"):
     return d
 
 def load_glove(glove_file="glove.6B.300d.txt"):
-    print("Starting to Load Glove vectors") 
+    print("\nStarting to Load Glove vectors") 
     start_time = time.time()
     f = open(glove_file,'r')
     print("Completed opening file in {} seconds".format((time.time() - start_time)))

@@ -15,6 +15,7 @@ from data_utils import TextMelLoader, TextMelCollate
 from loss_function import Tacotron2Loss
 from logger import Tacotron2Logger
 from hparams import create_hparams
+from glove import create_glove_dict
 
 
 def reduce_tensor(tensor, n_gpus):
@@ -40,9 +41,12 @@ def init_distributed(hparams, n_gpus, rank, group_name):
 
 
 def prepare_dataloaders(hparams):
+    glove = None
+    if hparams.encoder_conditioning:
+        glove = create_glove_dict("glove_sample.txt")
     # Get data, data loaders and collate function ready
-    trainset = TextMelLoader(hparams.training_files, hparams)
-    valset = TextMelLoader(hparams.validation_files, hparams)
+    trainset = TextMelLoader(hparams.training_files, hparams, glove)
+    valset = TextMelLoader(hparams.validation_files, hparams, glove)
     collate_fn = TextMelCollate(hparams.n_frames_per_step)
 
     if hparams.distributed_run:
