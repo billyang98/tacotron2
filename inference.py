@@ -11,6 +11,7 @@ from layers import TacotronSTFT, STFT
 from audio_processing import griffin_lim
 from train import load_model
 from text import text_to_sequence
+from glove import get_word
 
 def plot_data(data, figsize=(16, 4)):
     fig, axes = plt.subplots(1, len(data), figsize=figsize)
@@ -18,15 +19,21 @@ def plot_data(data, figsize=(16, 4)):
         axes[i].imshow(data[i], aspect='auto', origin='bottom', 
                        interpolation='none')
 
-def text_to_mel(model, text):
+def text_to_mel(model, text, glove):
     sequence = np.array(text_to_sequence(text, ['english_cleaners']))[None, :]
     sequence = torch.autograd.Variable(torch.from_numpy(sequence)).cuda().long()
-    mel_outputs, mel_outputs_postnet, _, alignments = model.inference(sequence)
+    input = sequence
+    if model.encoder_conditioning:
+        words = text.strip().split()
+        words_v = [get_word(glove, word) for word in words]
+        words_v = torch.FloatTensor(words_v)
+        input = (sequence, words_v)
+    mel_outputs, mel_outputs_postnet, _, alignments = model.inference(input)
     plot_data((mel_outputs.float().data.cpu().numpy()[0],
            mel_outputs_postnet.float().data.cpu().numpy()[0],
            alignments.float().data.cpu().numpy()[0].T))
     return (mel_outputs, mel_outputs_postnet, alignments)
-    
+
 
 
 def setup_model(checkpoint_path):

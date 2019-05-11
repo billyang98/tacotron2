@@ -633,7 +633,20 @@ class Tacotron2(nn.Module):
             output_lengths)
 
     def inference(self, inputs):
-        embedded_inputs = self.embedding(inputs).transpose(1, 2)
+        chars = inputs
+        if self.encoder_conditioning:
+            chars = inputs[0]
+            words = inputs[1]
+        embedded_inputs = self.embedding(chars)
+        if self.encoder_conditioning:
+            for i in range(0, len(embedded_inputs)):
+                context_attention, alignment = self.conditioner(embedded_inputs[i], words, conditioner_mask= None)
+                full_context_attention.append(context_attention)
+                alignments.append(alignment)
+            full_context_attention = torch.stack(full_context_attention).squeeze(1)
+            embedded_inputs = torch.cat((embedded_inputs, full_context_attention), 1)
+        embedded_inputs = embedded_inputs.transpose(1,2)
+
         encoder_outputs = self.encoder.inference(embedded_inputs)
         mel_outputs, gate_outputs, alignments = self.decoder.inference(
             encoder_outputs)
