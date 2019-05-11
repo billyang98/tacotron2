@@ -9,8 +9,8 @@ def create_hparams(hparams_string=None, verbose=False):
         ################################
         # Experiment Parameters        #
         ################################
-#        epochs=500, #original
-        epochs=100, # unsupervised
+        epochs=500, #original
+#        epochs=100, # unsupervised
 #        epochs = 3,
         iters_per_checkpoint=1000, # original
         seed=1234,

@@ -550,6 +550,7 @@ class Tacotron2(nn.Module):
         self.unsupervised = hparams.unsupervised
         # encoder conditioning for semi supervised paper
         self.encoder_conditioning = hparams.encoder_conditioning
+        self.encoder_embedding_dim = hparams.encoder_embedding_dim
 
     def parse_batch(self, batch):
         text_padded, input_lengths, mel_padded, gate_padded, \
@@ -593,7 +594,6 @@ class Tacotron2(nn.Module):
             embedded_inputs = self.embedding(text_inputs)
             #print("embedded_inputs {}".format(embedded_inputs.size()))
             if self.encoder_conditioning:
-                print("### we are doing all the encoder conditioning")
                 # create attentioned inputs, a [embedded_input, context vector]
                 # vector
                 conditioner_mask = ~get_mask_from_lengths(words_lengths)
