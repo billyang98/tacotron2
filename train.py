@@ -45,7 +45,7 @@ def init_distributed(hparams, n_gpus, rank, group_name):
 def prepare_dataloaders(hparams):
     glove = None
     if hparams.encoder_conditioning:
-        glove = create_glove_dict("glove_sample.txt")
+        glove = create_glove_dict("glove.6B.300d.txt")
     # Get data, data loaders and collate function ready
     trainset = TextMelLoader(hparams.training_files, hparams, glove)
     valset = TextMelLoader(hparams.validation_files, hparams, glove)
