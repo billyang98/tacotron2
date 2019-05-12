@@ -58,6 +58,10 @@ python -m multiproc validate.py --output_directory=outdir_val
 --log_directory=logdir -c outdir_unsupervised/checkpoint_10200
 --hparams=distributed_run=True,fp16_run=True,unsupervised=True,training_files=filelists/david/unlabelled/train_list.txt,validation_files=filelists/david/unlabelled/val_list.txt
 
+## Inference
+1. `out = inference.do_full_inference("outdir_full_tacotron_ed/checkpoint_3000", "hello my name is david", True)`
+2. `python -m multiproc inference.py -c outdir_full_tacotron_ed/checkpoint_3000 -t "hello my name is david" -e`
+
 ### Main Files for Training
 filelists/david/labelled/val.txt
 filelists/david/labelled/train.txt

@@ -1,17 +1,26 @@
+import argparse
 import matplotlib
 import matplotlib.pylab as plt
 
 import sys
 import numpy as np
 import torch
+import time
 
 from hparams import create_hparams
 from model import Tacotron2
 from layers import TacotronSTFT, STFT
 from audio_processing import griffin_lim
-from train import load_model
+from train import load_model, init_distributed
 from text import text_to_sequence
-from glove import get_word
+from glove import get_word, create_glove_dict
+
+def do_full_inference(checkpoint_path, text, encoder_conditioning=False):
+    glove = create_glove_dict()
+    #glove = {"unknown token": [i for i in range(0, 300)]}
+    model = setup_model(checkpoint_path,encoder_conditioning)
+    mel_outputs, mel_outputs_postnet, alignments = text_to_mel(model, text, glove)
+    return (mel_outputs, mel_outputs_postnet, alignments)
 
 def plot_data(data, figsize=(16, 4)):
     fig, axes = plt.subplots(1, len(data), figsize=figsize)
@@ -20,6 +29,8 @@ def plot_data(data, figsize=(16, 4)):
                        interpolation='none')
 
 def text_to_mel(model, text, glove):
+    print("Running inference on text: {}".format(text))
+    start_time = time.time()
     sequence = np.array(text_to_sequence(text, ['english_cleaners']))[None, :]
     sequence = torch.autograd.Variable(torch.from_numpy(sequence)).cuda().long()
     input = sequence
@@ -32,12 +43,19 @@ def text_to_mel(model, text, glove):
     plot_data((mel_outputs.float().data.cpu().numpy()[0],
            mel_outputs_postnet.float().data.cpu().numpy()[0],
            alignments.float().data.cpu().numpy()[0].T))
+    print("Finished inference in {} seconds".format(time.time() - start_time))
     return (mel_outputs, mel_outputs_postnet, alignments)
 
 
-
-def setup_model(checkpoint_path):
+def setup_model(checkpoint_path, encoder_conditioning=False):
+    print("Loading Model from checkpoint {}".format(checkpoint_path))
+    torch.backends.cudnn.enabled = True 
+    torch.backends.cudnn.benchmark =  True
     hparams = create_hparams()
+    hparams.encoder_conditioning = encoder_conditioning
+    hparams.fp16_run = True
+    hparams.distributed_run = True
+    init_distributed(hparams, 1, 0, 'group_name')
     model = load_model(hparams)
     model.load_state_dict(torch.load(checkpoint_path)['state_dict'])
     _ = model.cuda().eval().half()
@@ -74,3 +92,22 @@ def parsing_stuff_main():
     print("Distributed Run:", hparams.distributed_run)
     print("cuDNN Enabled:", hparams.cudnn_enabled)
     print("cuDNN Benchmark:", hparams.cudnn_benchmark)
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-c', '--checkpoint_path', type=str, default='output_full_tacotron_ed/checkpoint_4500',
+                        required=False, help='checkpoint path')
+    parser.add_argument('-t', '--text', type=str, default='this is a test string one two three',
+                        required=False, help='text to pass through tacotron')
+    parser.add_argument('-e', '--encoder_conditioning', action='store_true')
+    parser.add_argument('--n_gpus', type=int, default=1,
+                        required=False, help='number of gpus')
+    parser.add_argument('--rank', type=int, default=0,
+                        required=False, help='rank of current gpu')
+    parser.add_argument('--group_name', type=str, default='group_name',
+                        required=False, help='Distributed group name')
+    args = parser.parse_args()
+    do_full_inference(args.checkpoint_path, args.text, args.encoder_conditioning)
+
+    

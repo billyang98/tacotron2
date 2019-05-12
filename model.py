@@ -122,7 +122,8 @@ class AdditiveAttention(nn.Module):
         energies = self.energy_layer(torch.tanh(query_enc + context_enc)).squeeze(2)
         #print("energies {}".format(energies.size()))
 
-        energies.data.masked_fill_(mask, -float('inf'))
+        if mask is not None:
+            energies.data.masked_fill_(mask, -float('inf'))
         energies = energies.unsqueeze(1)
         attention_scores = F.softmax(energies, dim=-1)
         #print("attention_scores {}".format(attention_scores.size()))
@@ -636,15 +637,20 @@ class Tacotron2(nn.Module):
         chars = inputs
         if self.encoder_conditioning:
             chars = inputs[0]
-            words = inputs[1]
+            words = inputs[1].type(torch.HalfTensor).unsqueeze(0).cuda()
+        #print("\n####\nStarting Inference Pass")
+        #print("chars {}".format(chars.size()))
         embedded_inputs = self.embedding(chars)
+        #print("embedded_inputs {}".format(embedded_inputs.size()))
         if self.encoder_conditioning:
-            for i in range(0, len(embedded_inputs)):
-                context_attention, alignment = self.conditioner(embedded_inputs[i], words, conditioner_mask= None)
+            char_embeddings = embedded_inputs.transpose(0,1)
+            full_context_attention, alignments = [], []
+            for i in range(0, len(char_embeddings)):
+                context_attention, alignment = self.conditioner(char_embeddings[i], words, None)
                 full_context_attention.append(context_attention)
                 alignments.append(alignment)
-            full_context_attention = torch.stack(full_context_attention).squeeze(1)
-            embedded_inputs = torch.cat((embedded_inputs, full_context_attention), 1)
+            full_context_attention = torch.stack(full_context_attention).squeeze(2).transpose(0,1)
+            embedded_inputs = torch.cat((embedded_inputs, full_context_attention), 2)
         embedded_inputs = embedded_inputs.transpose(1,2)
 
         encoder_outputs = self.encoder.inference(embedded_inputs)
