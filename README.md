@@ -53,10 +53,11 @@ By default, the dataset dependent text embedding layers are [ignored]
 ## Multi-GPU Unsupervised learning
 1. `python -m multiproc train.py --output_directory=outdir_unsupervised --log_directory=logdir --hparams=distributed_run=True,fp16_run=True,unsupervised=True,training_files=filelists/david/unlabelled/train_list.txt,validation_files=filelists/david/unlabelled/val_list.txt `
 
+## Multi-GPU Supervised encoder validation
+1. ` python -m multiproc validate.py --output_directory=outdir_val --log_directory=logdir -c outdir_full_tacotron_ed/checkpoint_4500 --hparams=distributed_run=True,fp16_run=True,validation_files=filelists/david/labelled/val.txt,encoder_conditioning=True`
+
 ## Multi-GPU Unsupervised validation
-python -m multiproc validate.py --output_directory=outdir_val
---log_directory=logdir -c outdir_unsupervised/checkpoint_10200
---hparams=distributed_run=True,fp16_run=True,unsupervised=True,training_files=filelists/david/unlabelled/train_list.txt,validation_files=filelists/david/unlabelled/val_list.txt
+1. ` python -m multiproc validate.py --output_directory=outdir_val --log_directory=logdir -c outdir_unsupervised/checkpoint_10200 --hparams=distributed_run=True,fp16_run=True,unsupervised=True,training_files=filelists/david/unlabelled/train_list.txt,validation_files=filelists/david/unlabelled/val_list.txt`
 
 ## Inference
 1. `out = inference.do_full_inference("outdir_full_tacotron_ed/checkpoint_3000", "hello my name is david", True)`

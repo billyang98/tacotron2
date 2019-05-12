@@ -16,6 +16,8 @@ from loss_function import Tacotron2Loss
 from logger import Tacotron2Logger
 from hparams import create_hparams
 from glove import create_glove_dict
+from mcd.dtw import dtw
+from mcd.test_dtw import eucCost
 
 
 def reduce_tensor(tensor, n_gpus):
@@ -133,6 +135,8 @@ def validate(model, criterion, valset, iteration, batch_size, n_gpus,
                                 pin_memory=False, collate_fn=collate_fn)
 
         val_loss = 0.0
+        mcd_total = 0.0
+        count = 0
         for i, batch in enumerate(val_loader):
             x, y = model.parse_batch(batch)
             y_pred = model(x)
@@ -141,12 +145,22 @@ def validate(model, criterion, valset, iteration, batch_size, n_gpus,
                 reduced_val_loss = reduce_tensor(loss.data, n_gpus).item()
             else:
                 reduced_val_loss = loss.item()
+            mel_ys = y[0]
+            mel_ys_pred = y_pred[1]
+            for j in range(0, len(mel_ys)):
+                count += 1
+                mel_y = mel_ys[j]
+                mel_y_pred = mel_ys_pred[j]
+                mcd_one, paths = dtw(mel_y.cpu(),mel_y_pred.cpu(),eucCost)
+                mcd_total += mcd_one
             val_loss += reduced_val_loss
         val_loss = val_loss / (i + 1)
+        mcd_total = mcd_total / (count)
 
     model.train()
     if rank == 0:
         print("Validation loss {}: {:9f}  ".format(iteration, reduced_val_loss))
+        print("MCD {}: {:9f} ".format(iteration, mcd_total))
         logger.log_validation(reduced_val_loss, model, y, y_pred, iteration)
 
 
