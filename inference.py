@@ -6,6 +6,8 @@ import sys
 import numpy as np
 import torch
 import time
+import scipy
+from waveglow import glow
 
 from hparams import create_hparams
 from model import Tacotron2
@@ -46,6 +48,21 @@ def text_to_mel(model, text, glove):
     print("Finished inference in {} seconds".format(time.time() - start_time))
     return (mel_outputs, mel_outputs_postnet, alignments)
 
+def mel_to_audio(waveglow, mel):
+    audio = waveglow.infer(mel, sigma=0.666)
+    return audio
+
+def write_audio(audio_data, file_name):
+    scipy.io.wavfile.write(file_name, 22050, audio_data)
+
+def get_waveglow():
+    import sys
+    sys.path.insert(0, './waveglow')
+    waveglow = torch.load('waveglow_256channels.pt')['model']
+    waveglow.cuda().eval().half()
+    for k in waveglow.convinv:
+        k.float()
+    return waveglow
 
 def setup_model(checkpoint_path, encoder_conditioning=False):
     print("Loading Model from checkpoint {}".format(checkpoint_path))
