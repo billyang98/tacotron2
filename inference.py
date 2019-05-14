@@ -17,18 +17,19 @@ from train import load_model, init_distributed
 from text import text_to_sequence
 from glove import get_word, create_glove_dict
 
-def do_full_inference(checkpoint_path, text, encoder_conditioning=False):
+def do_full_inference(checkpoint_path, text, encoder_conditioning=False, unsupervised=False):
     glove = create_glove_dict()
-    #glove = {"unknown token": [i for i in range(0, 300)]}
-    model = setup_model(checkpoint_path,encoder_conditioning)
+#    glove = {"unknown token": [i for i in range(0, 300)]}
+    model = setup_model(checkpoint_path,encoder_conditioning,unsupervised)
     mel_outputs, mel_outputs_postnet, alignments = text_to_mel(model, text, glove)
     return mel_outputs, mel_outputs_postnet, alignments, model, glove
 
 def do_full_audio(text, number):
-    mel_outputs, mel_outputs_postnet, alignments, model, glove = do_full_inference("outdir_full_tacotron_ed2/checkpoint_4500", text, True)
+#    mel_outputs, mel_outputs_postnet, alignments, model, glove = do_full_inference("outdir_full_tacotron_ed2/checkpoint_4500", text, True)
+    mel_outputs, mel_outputs_postnet, alignments, model, glove = do_full_inference("outdir_unsupervised/checkpoint_10000", text, False, True)
     glow = get_waveglow()
     audio = mel_to_audio(glow, mel_outputs_postnet)
-    write_audio(audio[0].data.cpu().numpy(), number)
+#    write_audio(audio[0].data.cpu().numpy(), number)
     return audio, mel_outputs, mel_outputs_postnet, alignments, model, glove, glow
 
 def plot_data(data, figsize=(16, 4)):
@@ -73,17 +74,18 @@ def get_waveglow():
         k.float()
     return waveglow
 
-def setup_model(checkpoint_path, encoder_conditioning=False):
+def setup_model(checkpoint_path, encoder_conditioning=False, unsupervised=False):
     print("Loading Model from checkpoint {}".format(checkpoint_path))
     torch.backends.cudnn.enabled = True 
     torch.backends.cudnn.benchmark =  True
     hparams = create_hparams()
     hparams.encoder_conditioning = encoder_conditioning
+    hparams.unsupervised = unsupervised
     hparams.fp16_run = True
     hparams.distributed_run = True
     init_distributed(hparams, 1, 0, 'group_name')
     model = load_model(hparams)
-    model.load_state_dict(torch.load(checkpoint_path)['state_dict'])
+    model.load_state_dict(torch.load(checkpoint_path)['state_dict'], strict=False)
     _ = model.cuda().eval().half()
     return model
 

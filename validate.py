@@ -42,7 +42,7 @@ def validate(output_directory, log_directory, checkpoint_path, warm_start, n_gpu
 
     glove = None
     if hparams.encoder_conditioning:
-        glove = create_glove_dict("glove_sample.txt")
+        glove = create_glove_dict()
     valset = TextMelLoader(hparams.validation_files, hparams,glove)
     collate_fn = TextMelCollate(hparams.n_frames_per_step)
     logger = train.prepare_directories_and_logger(
