@@ -24,14 +24,12 @@ def do_full_inference(checkpoint_path, text, encoder_conditioning=False):
     mel_outputs, mel_outputs_postnet, alignments = text_to_mel(model, text, glove)
     return mel_outputs, mel_outputs_postnet, alignments, model, glove
 
-def do_full_audio(text):
+def do_full_audio(text, number):
     mel_outputs, mel_outputs_postnet, alignments, model, glove = do_full_inference("outdir_full_tacotron_ed2/checkpoint_4500", text, True)
     glow = get_waveglow()
     audio = mel_to_audio(glow, mel_outputs_postnet)
-    write_audio(audio[0].data.cpu().numpty(), 'audio_output/test1.wav')
+    write_audio(audio[0].data.cpu().numpy(), number)
     return audio, mel_outputs, mel_outputs_postnet, alignments, model, glove, glow
-
-
 
 def plot_data(data, figsize=(16, 4)):
     fig, axes = plt.subplots(1, len(data), figsize=figsize)
@@ -62,8 +60,9 @@ def mel_to_audio(waveglow, mel):
         audio = waveglow.infer(mel, sigma=0.666)
     return audio
 
-def write_audio(audio_data, file_name):
-    scipy.io.wavfile.write(file_name, 22050, audio_data)
+def write_audio(audio_data, file_num):
+    np.savetxt("audio_output/test{}.txt".format(file_num), audio_data)
+#    scipy.io.wavfile.write("audio_output/test{}.wav".format(file_num), 22050, audio_data)
 
 def get_waveglow():
     import sys
