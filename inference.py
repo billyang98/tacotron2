@@ -22,7 +22,16 @@ def do_full_inference(checkpoint_path, text, encoder_conditioning=False):
     #glove = {"unknown token": [i for i in range(0, 300)]}
     model = setup_model(checkpoint_path,encoder_conditioning)
     mel_outputs, mel_outputs_postnet, alignments = text_to_mel(model, text, glove)
-    return (mel_outputs, mel_outputs_postnet, alignments)
+    return mel_outputs, mel_outputs_postnet, alignments, model, glove
+
+def do_full_audio(text):
+    mel_outputs, mel_outputs_postnet, alignments, model, glove = do_full_inference("outdir_full_tacotron_ed2/checkpoint_4500", text, True)
+    glow = get_waveglow()
+    audio = mel_to_audio(glow, mel_outputs_postnet)
+    write_audio(audio[0].data.cpu().numpty(), 'audio_output/test1.wav')
+    return audio, mel_outputs, mel_outputs_postnet, alignments, model, glove, glow
+
+
 
 def plot_data(data, figsize=(16, 4)):
     fig, axes = plt.subplots(1, len(data), figsize=figsize)
@@ -49,7 +58,8 @@ def text_to_mel(model, text, glove):
     return (mel_outputs, mel_outputs_postnet, alignments)
 
 def mel_to_audio(waveglow, mel):
-    audio = waveglow.infer(mel, sigma=0.666)
+    with torch.no_grad():
+        audio = waveglow.infer(mel, sigma=0.666)
     return audio
 
 def write_audio(audio_data, file_name):
@@ -109,6 +119,8 @@ def parsing_stuff_main():
     print("Distributed Run:", hparams.distributed_run)
     print("cuDNN Enabled:", hparams.cudnn_enabled)
     print("cuDNN Benchmark:", hparams.cudnn_benchmark)
+
+
 
 
 if __name__ == '__main__':

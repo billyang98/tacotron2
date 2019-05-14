@@ -61,6 +61,7 @@ By default, the dataset dependent text embedding layers are [ignored]
 
 ## Inference
 1. `out = inference.do_full_inference("outdir_full_tacotron_ed/checkpoint_3000", "hello my name is david", True)`
+2. `audio, mel_outputs, mel_outputs_postnet, alignments, model, glove, glow = inference.do_full_audio("hello my name is david")`
 2. `python -m multiproc inference.py -c outdir_full_tacotron_ed/checkpoint_3000 -t "hello my name is david" -e`
 
 ### Main Files for Training
